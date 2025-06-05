@@ -1,7 +1,6 @@
 from datetime import date, datetime, time
 from typing import Dict, List, Optional
-
-from medical_system.application.ports.repositories.appointment_repository import AppointmentRepository
+from medical_system.domain.ports.repositories.appointment_repository import AppointmentRepository
 from medical_system.domain.entities.appointment import Appointment
 
 
@@ -17,7 +16,6 @@ class InMemoryAppointmentRepository(AppointmentRepository):
 
     def save(self, appointment: Appointment) -> Appointment:
         if appointment.id is None:
-            # New appointment
             appointment.id = self._next_id
             self._next_id += 1
         
@@ -28,12 +26,8 @@ class InMemoryAppointmentRepository(AppointmentRepository):
     def update(self, appointment: Appointment) -> Appointment:
         if appointment.id not in self._appointments:
             raise ValueError("Appointment not found")
-        
-        # Remove old indexes
         existing = self._appointments[appointment.id]
         self._remove_from_indexes(existing)
-        
-        # Update and reindex
         self._update_indexes(appointment)
         self._appointments[appointment.id] = appointment
         return appointment
@@ -67,11 +61,9 @@ class InMemoryAppointmentRepository(AppointmentRepository):
         ]
     
     def find_available_slots(self, doctor_id: int, date: date) -> List[datetime]:
-        # This is a simplified version - in a real app, you'd want to consider working hours, etc.
         appointments = self.find_by_doctor_and_date(doctor_id, date)
         booked_times = {apt.time for apt in appointments}
         
-        # Generate all possible 30-minute slots from 8:00 to 20:00
         all_slots = [
             time(hour=h, minute=m)
             for h in range(8, 20)
@@ -97,28 +89,21 @@ class InMemoryAppointmentRepository(AppointmentRepository):
             del self._appointments[appointment_id]
     
     def _update_indexes(self, appointment: Appointment):
-        """Update all indexes for an appointment"""
-        # Update doctor-date index
         key = (appointment.doctor.id, appointment.date)
         if key not in self._doctor_date_index:
             self._doctor_date_index[key] = []
         if appointment not in self._doctor_date_index[key]:
             self._doctor_date_index[key].append(appointment)
         
-        # Update patient index
         if appointment.patient.id not in self._patient_index:
             self._patient_index[appointment.patient.id] = []
         if appointment not in self._patient_index[appointment.patient.id]:
             self._patient_index[appointment.patient.id].append(appointment)
     
     def _remove_from_indexes(self, appointment: Appointment):
-        """Remove an appointment from all indexes"""
-        # Remove from doctor-date index
         key = (appointment.doctor.id, appointment.date)
         if key in self._doctor_date_index and appointment in self._doctor_date_index[key]:
             self._doctor_date_index[key].remove(appointment)
-        
-        # Remove from patient index
         if appointment.patient.id in self._patient_index:
             if appointment in self._patient_index[appointment.patient.id]:
                 self._patient_index[appointment.patient.id].remove(appointment)

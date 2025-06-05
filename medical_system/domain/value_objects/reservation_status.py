@@ -1,10 +1,10 @@
-from enum import Enum, auto
+from enum import Enum
 
-
-class AppointmentStatus(Enum):
-    SCHEDULED = auto()
-    CANCELLED = auto()
-    COMPLETED = auto()
+class AppointmentStatus(str, Enum):
+    SCHEDULED = "Programada"
+    CANCELLED = "Cancelada"
+    COMPLETED = "Completada"
 
     def __str__(self) -> str:
-        return self.name.lower()
+        return self.value
+

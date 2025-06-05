@@ -1,9 +1,6 @@
 from dataclasses import dataclass
-from typing import Optional
-
 from medical_system.domain.entities.base_entity import BaseEntity
 from medical_system.domain.value_objects.email import Email
-
 
 @dataclass
 class Doctor(BaseEntity):

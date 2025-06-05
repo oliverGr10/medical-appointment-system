@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 import re
-from typing import Optional
-
 
 @dataclass(frozen=True)
 class Email:

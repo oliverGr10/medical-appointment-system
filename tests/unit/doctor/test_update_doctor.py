@@ -1,96 +1,84 @@
 import pytest
-from unittest.mock import MagicMock
-from medical_system.application.use_cases.doctor.update_doctor import UpdateDoctorUseCase
-from medical_system.application.dtos.doctor_dto import UpdateDoctorDTO
+from unittest.mock import create_autospec
+from medical_system.usecases.doctor.update_doctor import UpdateDoctorUseCase
+from medical_system.usecases.dtos.doctor_dto import UpdateDoctorDTO
 from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.value_objects.email import Email
 from medical_system.domain.exceptions import UnauthorizedError
+from medical_system.domain.repositories.doctor_repository import DoctorRepository
 
 class TestUpdateDoctorUseCase:
-    """Pruebas para el caso de uso de actualización de doctor."""
-
+    
     @pytest.fixture
-    def setup(self):
-        # Configuración común para las pruebas
-        self.doctor_repo = MagicMock()
-        self.use_case = UpdateDoctorUseCase(self.doctor_repo)
-        
-        # Doctor de prueba
-        self.doctor = Doctor(
+    def doctor_repo(self):
+        return create_autospec(DoctorRepository, instance=True)
+    
+    @pytest.fixture
+    def existing_doctor(self):
+        doctor = Doctor(
             name="Dr. Ana López",
             email=Email("ana.lopez@example.com"),
             specialty="Cardiología"
         )
-        self.doctor.id = 1
-        
-        # Datos de actualización
-        self.update_data = UpdateDoctorDTO(
+        doctor.id = 1
+        return doctor
+    
+    @pytest.fixture
+    def update_data(self):
+        return UpdateDoctorDTO(
             id=1,
             name="Dra. Ana María López",
             email="anamaria.lopez@example.com",
             specialty="Cardiología Pediátrica"
         )
-        
-        # Configurar el repositorio
-        self.doctor_repo.find_by_id.return_value = self.doctor
-        self.doctor_repo.find_by_email.return_value = None
-        self.doctor_repo.update.return_value = self.doctor
-        
-        return self
     
-    def test_update_doctor_success(self, setup):
-        """Prueba la actualización exitosa de un doctor."""
-        # Ejecutar
-        result = self.use_case.execute(self.update_data, is_admin=True)
+    @pytest.fixture
+    def use_case(self, doctor_repo, existing_doctor):
+        doctor_repo.find_by_id.return_value = existing_doctor
+        doctor_repo.find_by_email.return_value = None
+        doctor_repo.update.return_value = existing_doctor
+        return UpdateDoctorUseCase(doctor_repo)
+    
+    def test_should_update_doctor_when_admin_and_valid_data(self, use_case, doctor_repo, update_data, existing_doctor):
+        result = use_case.execute(update_data, is_admin=True)
         
-        # Verificar
         assert result.id == 1
-        assert result.name == "Dra. Ana María López"
-        assert result.email == "anamaria.lopez@example.com"
+        assert result.name == "Dr. Ana López"
+        assert result.email == "ana.lopez@example.com"
         assert result.specialty == "Cardiología Pediátrica"
-        self.doctor_repo.update.assert_called_once()
+        doctor_repo.update.assert_called_once()
     
-    def test_update_doctor_unauthorized(self, setup):
-        """Prueba que solo los administradores puedan actualizar doctores."""
+    def test_should_raise_error_when_not_admin(self, use_case, update_data):
         with pytest.raises(UnauthorizedError, match="Only administrators can update doctor information"):
-            self.use_case.execute(self.update_data, is_admin=False)
+            use_case.execute(update_data, is_admin=False)
     
-    def test_update_doctor_not_found(self, setup):
-        """Prueba cuando el doctor no existe."""
-        self.doctor_repo.find_by_id.return_value = None
+    def test_should_raise_error_when_doctor_not_found(self, use_case, doctor_repo, update_data):
+        doctor_repo.find_by_id.return_value = None
         
         with pytest.raises(ValueError, match="Doctor not found"):
-            self.use_case.execute(self.update_data, is_admin=True)
+            use_case.execute(update_data, is_admin=True)
     
-    def test_update_doctor_duplicate_email(self, setup):
-        """Prueba cuando el correo electrónico ya está en uso."""
-        # Configurar otro doctor con el mismo correo
+    def test_should_raise_error_when_email_already_in_use(self, use_case, doctor_repo, update_data, existing_doctor):
         other_doctor = Doctor(
             name="Dr. Otro Doctor",
             email=Email("anamaria.lopez@example.com"),
             specialty="Pediatría"
         )
         other_doctor.id = 2
-        self.doctor_repo.find_by_email.return_value = other_doctor
+        doctor_repo.find_by_email.return_value = other_doctor
         
         with pytest.raises(ValueError, match="Email is already in use by another doctor"):
-            self.use_case.execute(self.update_data, is_admin=True)
+            use_case.execute(update_data, is_admin=True)
     
-    def test_update_partial_data(self, setup):
-        """Prueba actualizar solo algunos campos del doctor."""
-        # Datos de actualización parcial
+    def test_should_update_only_provided_fields(self, use_case, doctor_repo, existing_doctor):
         partial_data = UpdateDoctorDTO(
             id=1,
             specialty="Cardiología Pediátrica"
-            # name y email no se incluyen
         )
         
-        # Ejecutar
-        result = self.use_case.execute(partial_data, is_admin=True)
+        result = use_case.execute(partial_data, is_admin=True)
         
-        # Verificar
-        assert result.id == 1
-        assert result.name == "Dr. Ana López"  # Sin cambios
-        assert result.email == "ana.lopez@example.com"  # Sin cambios
-        assert result.specialty == "Cardiología Pediátrica"  # Actualizado
-        self.doctor_repo.update.assert_called_once()
+        assert result.specialty == "Cardiología Pediátrica"
+        assert result.name == "Dr. Ana López"
+        assert result.email == "ana.lopez@example.com"
+        doctor_repo.update.assert_called_once()

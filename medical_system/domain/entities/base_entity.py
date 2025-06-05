@@ -4,11 +4,8 @@ from typing import Any, Optional
 
 @dataclass
 class BaseEntity:
-    # En Python 3.13+, los campos sin valor predeterminado deben ir primero
-    # Por eso movemos id al final con un valor por defecto None
-    
+
     def __post_init__(self):
-        # Inicializamos el ID si no está definido
         if not hasattr(self, 'id'):
             self.id = None
     

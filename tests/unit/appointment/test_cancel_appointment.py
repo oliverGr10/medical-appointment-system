@@ -1,93 +1,91 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import create_autospec
 from datetime import date, time, timedelta
-from medical_system.application.use_cases.appointment.cancel_appointment import CancelAppointmentUseCase
+from medical_system.usecases.appointment.cancel_appointment import CancelAppointmentUseCase
 from medical_system.domain.entities.appointment import Appointment, AppointmentStatus
 from medical_system.domain.entities.patient import Patient
 from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.value_objects.email import Email
 from medical_system.domain.exceptions import UnauthorizedError
+from medical_system.domain.repositories.appointment_repository import AppointmentRepository
+from medical_system.domain.repositories.patient_repository import PatientRepository
 
 class TestCancelAppointmentUseCase:
-    """Pruebas para el caso de uso de cancelación de cita."""
-
+    
     @pytest.fixture
-    def setup(self):
-        # Configuración común para las pruebas
-        self.appointment_repo = MagicMock()
-        self.patient_repo = MagicMock()
-        self.use_case = CancelAppointmentUseCase(
-            appointment_repository=self.appointment_repo,
-            patient_repository=self.patient_repo
-        )
-        
-        # Crear paciente de prueba
-        self.patient = Patient(
+    def appointment_repo(self):
+        return create_autospec(AppointmentRepository, instance=True)
+    
+    @pytest.fixture
+    def patient_repo(self):
+        return create_autospec(PatientRepository, instance=True)
+    
+    @pytest.fixture
+    def patient(self):
+        patient = Patient(
             name="Juan Pérez",
             email=Email("juan@example.com"),
             birth_date=date(1990, 1, 1)
         )
-        self.patient.id = 1
-        
-        # Crear doctor de prueba
-        self.doctor = Doctor(
+        patient.id = 1
+        return patient
+    
+    @pytest.fixture
+    def doctor(self):
+        doctor = Doctor(
             name="Dr. Ana López",
             email=Email("ana@example.com"),
             specialty="Cardiología"
         )
-        self.doctor.id = 1
-        
-        # Crear cita de prueba (usando una fecha futura)
+        doctor.id = 1
+        return doctor
+    
+    @pytest.fixture
+    def scheduled_appointment(self, patient, doctor):
         future_date = date.today() + timedelta(days=1)
-        self.appointment = Appointment(
+        appointment = Appointment(
             date=future_date,
             time=time(10, 0),
-            patient=self.patient,
-            doctor=self.doctor,
+            patient=patient,
+            doctor=doctor,
             status=AppointmentStatus.SCHEDULED
         )
-        self.appointment.id = 1
-        
-        # Configurar repositorios
-        self.appointment_repo.find_by_id.return_value = self.appointment
-        self.patient_repo.find_by_id.return_value = self.patient
-        
-        return self
+        appointment.id = 1
+        return appointment
     
-    def test_cancel_appointment_success(self, setup):
-        """Prueba la cancelación exitosa de una cita."""
-        # Ejecutar
-        self.use_case.execute(appointment_id=1, patient_id=1)
-        
-        # Verificar
-        assert self.appointment.status == AppointmentStatus.CANCELLED
-        self.appointment_repo.save.assert_called_once_with(self.appointment)
+    @pytest.fixture
+    def use_case(self, appointment_repo, patient_repo, scheduled_appointment, patient):
+        appointment_repo.find_by_id.return_value = scheduled_appointment
+        patient_repo.find_by_id.return_value = patient
+        return CancelAppointmentUseCase(
+            appointment_repository=appointment_repo,
+            patient_repository=patient_repo
+        )
     
-    def test_cancel_appointment_not_found(self, setup):
-        """Prueba cuando la cita no existe."""
-        self.appointment_repo.find_by_id.return_value = None
+    def test_should_cancel_appointment_when_patient_is_owner(self, use_case, appointment_repo, scheduled_appointment):
+        use_case.execute(appointment_id=1, patient_id=1)
+        
+        assert scheduled_appointment.status == AppointmentStatus.CANCELLED
+        appointment_repo.save.assert_called_once_with(scheduled_appointment)
+    
+    def test_should_raise_error_when_appointment_not_found(self, use_case, appointment_repo):
+        appointment_repo.find_by_id.return_value = None
         
         with pytest.raises(ValueError, match="Appointment not found"):
-            self.use_case.execute(appointment_id=999, patient_id=1)
+            use_case.execute(appointment_id=999, patient_id=1)
     
-    def test_cancel_appointment_unauthorized(self, setup):
-        """Prueba cuando un paciente intenta cancelar la cita de otro paciente."""
+    def test_should_raise_error_when_patient_not_owner(self, use_case):
         with pytest.raises(UnauthorizedError, match="You can only cancel your own appointments"):
-            self.use_case.execute(appointment_id=1, patient_id=2)  # ID de paciente diferente
+            use_case.execute(appointment_id=1, patient_id=2)
     
-    def test_cancel_already_cancelled_appointment(self, setup):
-        """Prueba cuando se intenta cancelar una cita ya cancelada."""
-        # Configurar cita ya cancelada
-        self.appointment.cancel()
+    def test_should_raise_error_when_appointment_already_cancelled(self, use_case, scheduled_appointment):
+        scheduled_appointment.cancel()
         
-        # Verificar que no se puede cancelar nuevamente
         with pytest.raises(ValueError, match="Appointment is already cancelled"):
-            self.use_case.execute(appointment_id=1, patient_id=1)
+            use_case.execute(appointment_id=1, patient_id=1)
     
-    def test_cancel_completed_appointment(self, setup):
-        """Prueba cuando se intenta cancelar una cita ya completada."""
-        # Configurar cita completada
-        self.appointment.complete()
+    def test_should_raise_error_when_appointment_completed(self, use_case, scheduled_appointment):
+        scheduled_appointment.complete()
         
         with pytest.raises(ValueError, match="Cannot cancel a completed appointment"):
-            self.use_case.execute(appointment_id=1, patient_id=1)
+            use_case.execute(appointment_id=1, patient_id=1)

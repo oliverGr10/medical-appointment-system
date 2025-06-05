@@ -1,9 +1,6 @@
 from typing import Dict, List, Optional
-
-from medical_system.application.ports.repositories.doctor_repository import DoctorRepository
+from medical_system.domain.ports.repositories.doctor_repository import DoctorRepository
 from medical_system.domain.entities.doctor import Doctor
-from medical_system.domain.value_objects.email import Email
-
 
 class InMemoryDoctorRepository(DoctorRepository):
     def __init__(self):
@@ -23,7 +20,6 @@ class InMemoryDoctorRepository(DoctorRepository):
 
     def save(self, doctor: Doctor) -> Doctor:
         if doctor.id is None:
-            # New doctor
             doctor.id = self._next_id
             self._next_id += 1
         
@@ -33,12 +29,9 @@ class InMemoryDoctorRepository(DoctorRepository):
     def update(self, doctor: Doctor) -> Doctor:
         if doctor.id not in self._doctors:
             raise ValueError("Doctor not found")
-        
-        # Remove old indexes
+
         existing = self._doctors[doctor.id]
         self._remove_from_indexes(existing)
-        
-        # Update and reindex
         self._update_indexes(doctor)
         self._doctors[doctor.id] = doctor
         return doctor
@@ -47,14 +40,11 @@ class InMemoryDoctorRepository(DoctorRepository):
         return list(self._doctors.values())
     
     def _update_indexes(self, doctor: Doctor):
-        """Update all indexes for a doctor"""
         self._doctors[doctor.id] = doctor
-        
-        # Update email index
+
         if hasattr(doctor, 'email') and doctor.email:
             self._email_index[str(doctor.email).lower()] = doctor
-        
-        # Update specialty index
+
         if hasattr(doctor, 'specialty') and doctor.specialty:
             specialty_key = doctor.specialty.lower().strip()
             if specialty_key not in self._specialty_index:
@@ -63,12 +53,10 @@ class InMemoryDoctorRepository(DoctorRepository):
                 self._specialty_index[specialty_key].append(doctor)
     
     def _remove_from_indexes(self, doctor: Doctor):
-        """Remove a doctor from all indexes"""
-        # Remove from email index
+        
         if hasattr(doctor, 'email') and doctor.email and str(doctor.email).lower() in self._email_index:
             del self._email_index[str(doctor.email).lower()]
-        
-        # Remove from specialty index
+
         if hasattr(doctor, 'specialty') and doctor.specialty:
             specialty_key = doctor.specialty.lower().strip()
             if specialty_key in self._specialty_index:
