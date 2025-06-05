@@ -3,7 +3,6 @@ from typing import Dict, List, Optional
 from medical_system.domain.ports.repositories.appointment_repository import AppointmentRepository
 from medical_system.domain.entities.appointment import Appointment
 
-
 class InMemoryAppointmentRepository(AppointmentRepository):
     def __init__(self):
         self._appointments: Dict[int, Appointment] = {}
@@ -70,7 +69,6 @@ class InMemoryAppointmentRepository(AppointmentRepository):
             for m in [0, 30]
         ]
         
-        # Filter out booked times
         available = [
             datetime.combine(date, t)
             for t in all_slots
@@ -79,8 +77,23 @@ class InMemoryAppointmentRepository(AppointmentRepository):
         
         return available
     
-    def find_all(self) -> List[Appointment]:
-        return list(self._appointments.values())
+    def find_all(self, **filters) -> List[Appointment]:
+        appointments = list(self._appointments.values())
+        
+        if not filters:
+            return appointments
+            
+        filtered_appointments = []
+        for apt in appointments:
+            match = True
+            for key, value in filters.items():
+                if not hasattr(apt, key) or getattr(apt, key) != value:
+                    match = False
+                    break
+            if match:
+                filtered_appointments.append(apt)
+                
+        return filtered_appointments
     
     def delete(self, appointment_id: int) -> None:
         if appointment_id in self._appointments:

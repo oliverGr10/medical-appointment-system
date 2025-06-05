@@ -7,7 +7,7 @@ from medical_system.domain.entities.patient import Patient
 from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.value_objects.email import Email
 from medical_system.domain.exceptions import UnauthorizedError
-from medical_system.domain.repositories.appointment_repository import AppointmentRepository
+from medical_system.domain.ports.repositories.appointment_repository import AppointmentRepository
 
 class TestDeleteAppointmentUseCase:
     
@@ -54,27 +54,33 @@ class TestDeleteAppointmentUseCase:
         return DeleteAppointmentUseCase(appointment_repo)
     
     def test_should_delete_appointment_when_admin(self, use_case, appointment_repo):
-        use_case.execute(appointment_id=1, is_admin=True)
+        use_case.execute(appointment_id=1, requesting_user_id=1, is_admin=True)
         appointment_repo.delete.assert_called_once_with(1)
     
     def test_should_raise_error_when_appointment_not_found(self, use_case, appointment_repo):
+        from medical_system.domain.exceptions import ResourceNotFoundError
         appointment_repo.find_by_id.return_value = None
         
-        with pytest.raises(ValueError, match="Appointment not found"):
-            use_case.execute(appointment_id=999, is_admin=True)
+        with pytest.raises(ResourceNotFoundError, match="La cita especificada no existe"):
+            use_case.execute(appointment_id=999, requesting_user_id=1, is_admin=True)
     
-    def test_should_raise_error_when_not_admin(self, use_case):
-        with pytest.raises(UnauthorizedError, match="Only administrators can delete appointments"):
-            use_case.execute(appointment_id=1, is_admin=False)
+    def test_should_raise_error_when_not_authorized(self, use_case, appointment):
+        unauthorized_user_id = 999
+        with pytest.raises(UnauthorizedError, match="No tiene permisos para eliminar esta cita"):
+            use_case.execute(
+                appointment_id=appointment.id, 
+                requesting_user_id=unauthorized_user_id, 
+                is_admin=False
+            )
     
     def test_should_delete_completed_appointment_when_admin(self, use_case, appointment_repo, appointment):
         appointment.complete()
         
-        use_case.execute(appointment_id=1, is_admin=True)
+        use_case.execute(appointment_id=1, requesting_user_id=1, is_admin=True)
         appointment_repo.delete.assert_called_once_with(1)
     
     def test_should_delete_cancelled_appointment_when_admin(self, use_case, appointment_repo, appointment):
         appointment.cancel()
         
-        use_case.execute(appointment_id=1, is_admin=True)
+        use_case.execute(appointment_id=1, requesting_user_id=1, is_admin=True)
         appointment_repo.delete.assert_called_once_with(1)

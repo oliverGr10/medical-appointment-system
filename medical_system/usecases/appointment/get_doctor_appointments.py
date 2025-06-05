@@ -33,7 +33,6 @@ class GetDoctorAppointmentsUseCase:
         from medical_system.usecases.dtos.patient_dto import PatientDTO
         from medical_system.usecases.dtos.doctor_dto import DoctorDTO
         
-        # Obtener los nombres del paciente y el doctor
         patient_name = appointment.patient.name
         doctor_name = appointment.doctor.name
         

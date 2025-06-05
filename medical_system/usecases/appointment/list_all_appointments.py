@@ -29,19 +29,23 @@ class ListAllAppointmentsUseCase:
     ) -> List[Dict[str, Any]]:
         self._validate_parameters(date, status, start_date, end_date)
         
-        filters = {k: v for k, v in {
-            'patient_id': patient_id,
-            'doctor_id': doctor_id,
-            'date': date,
-        }.items() if v is not None}
+        appointments = self.appointment_repository.find_all()
         
-        if status:
+        if patient_id is not None:
+            appointments = [apt for apt in appointments if apt.patient.id == patient_id]
+            
+        if doctor_id is not None:
+            appointments = [apt for apt in appointments if apt.doctor.id == doctor_id]
+            
+        if date is not None:
+            appointments = [apt for apt in appointments if apt.date == date]
+            
+        if status is not None:
             try:
-                filters['status'] = AppointmentStatus[status.upper()]
+                status_enum = AppointmentStatus[status.upper()]
+                appointments = [apt for apt in appointments if apt.status == status_enum]
             except KeyError:
                 raise ValueError(f"Estado no válido: {status}")
-        
-        appointments = self.appointment_repository.find_all(**filters)
         
         if start_date or end_date:
             appointments = self._filter_by_date_range(appointments, start_date, end_date)

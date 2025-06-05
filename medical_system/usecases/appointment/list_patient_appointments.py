@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 from medical_system.domain.ports.repositories.appointment_repository import AppointmentRepository
 from medical_system.domain.ports.repositories.patient_repository import PatientRepository
 from medical_system.domain.entities.appointment import AppointmentStatus
-
+from medical_system.domain.exceptions import UnauthorizedError
 
 class ListPatientAppointmentsUseCase:
 
@@ -23,28 +23,32 @@ class ListPatientAppointmentsUseCase:
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
         requesting_user_id: Optional[int] = None,
+        requesting_patient_id: Optional[int] = None,
         **filters
     ) -> List[Dict[str, Any]]:
+        if requesting_patient_id is not None:
+            if requesting_patient_id != patient_id:
+                raise UnauthorizedError("You can only view your own appointments")
+        elif requesting_user_id is not None and requesting_user_id != patient_id:
+            raise UnauthorizedError("You can only view your own appointments")
 
-        if requesting_user_id is not None and requesting_user_id != patient_id:
-
-            pass
+        patient = self.patient_repository.find_by_id(patient_id)
+        if not patient:
+            raise ValueError("Patient not found")
 
         self._validate_parameters(date, status, start_date, end_date)
 
-        filters['patient_id'] = patient_id
+        appointments = self.appointment_repository.find_by_patient(patient_id=patient_id)
+        
         if date:
-            filters['date'] = date
+            appointments = [apt for apt in appointments if apt.date == date]
+            
         if status:
             try:
-                filters['status'] = AppointmentStatus[status.upper()]
+                status_enum = AppointmentStatus[status.upper()]
+                appointments = [apt for apt in appointments if apt.status == status_enum]
             except KeyError:
                 raise ValueError(f"Estado no válido: {status}")
- 
-        appointments = self.appointment_repository.find_by_patient(
-            patient_id=patient_id,
-            **filters
-        )
 
         if start_date or end_date:
             appointments = self._filter_by_date_range(appointments, start_date, end_date)
@@ -102,7 +106,7 @@ class ListPatientAppointmentsUseCase:
     
     @staticmethod
     def _to_dict(appointment) -> Dict[str, Any]:
-        return {
+        result = {
             'id': appointment.id,
             'date': appointment.date,
             'time': appointment.time,
@@ -111,16 +115,20 @@ class ListPatientAppointmentsUseCase:
                 'id': appointment.patient.id,
                 'name': appointment.patient.name,
                 'email': str(appointment.patient.email),
-                'birth_date': appointment.patient.birth_date,
+                'birth_date': getattr(appointment.patient, 'birth_date', None),
             },
             'doctor': {
                 'id': appointment.doctor.id,
                 'name': appointment.doctor.name,
                 'email': str(appointment.doctor.email),
-                'specialty': appointment.doctor.specialty,
+                'specialty': getattr(appointment.doctor, 'specialty', None),
             },
-            'created_at': appointment.created_at,
-            'updated_at': appointment.updated_at,
-            'notes': getattr(appointment, 'notes', None),
-            'reason': getattr(appointment, 'reason', None)
         }
+        
+        # Agregar campos opcionales si existen
+        optional_fields = ['created_at', 'updated_at', 'notes', 'reason']
+        for field in optional_fields:
+            if hasattr(appointment, field):
+                result[field] = getattr(appointment, field)
+                
+        return result

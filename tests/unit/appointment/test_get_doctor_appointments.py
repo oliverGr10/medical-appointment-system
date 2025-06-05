@@ -1,12 +1,12 @@
 from datetime import date, time
-from unittest.mock import create_autospe
+from unittest.mock import create_autospec
 import pytest
 from medical_system.domain.entities.appointment import Appointment, AppointmentStatus
 from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.entities.patient import Patient
 from medical_system.domain.exceptions import UnauthorizedError
-from medical_system.domain.repositories.appointment_repository import AppointmentRepository
-from medical_system.domain.repositories.doctor_repository import DoctorRepository
+from medical_system.domain.ports.repositories.appointment_repository import AppointmentRepository
+from medical_system.domain.ports.repositories.doctor_repository import DoctorRepository
 from medical_system.domain.value_objects.email import Email
 from medical_system.usecases.appointment.get_doctor_appointments import GetDoctorAppointmentsUseCase
 

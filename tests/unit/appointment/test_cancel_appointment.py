@@ -7,8 +7,8 @@ from medical_system.domain.entities.patient import Patient
 from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.value_objects.email import Email
 from medical_system.domain.exceptions import UnauthorizedError
-from medical_system.domain.repositories.appointment_repository import AppointmentRepository
-from medical_system.domain.repositories.patient_repository import PatientRepository
+from medical_system.domain.ports.repositories.appointment_repository import AppointmentRepository
+from medical_system.domain.ports.repositories.patient_repository import PatientRepository
 
 class TestCancelAppointmentUseCase:
     
@@ -71,21 +71,21 @@ class TestCancelAppointmentUseCase:
     def test_should_raise_error_when_appointment_not_found(self, use_case, appointment_repo):
         appointment_repo.find_by_id.return_value = None
         
-        with pytest.raises(ValueError, match="Appointment not found"):
+        with pytest.raises(ValueError, match="No se encontró la cita especificada"):
             use_case.execute(appointment_id=999, patient_id=1)
     
     def test_should_raise_error_when_patient_not_owner(self, use_case):
-        with pytest.raises(UnauthorizedError, match="You can only cancel your own appointments"):
+        with pytest.raises(UnauthorizedError, match="Solo puedes cancelar tus propias citas"):
             use_case.execute(appointment_id=1, patient_id=2)
     
     def test_should_raise_error_when_appointment_already_cancelled(self, use_case, scheduled_appointment):
         scheduled_appointment.cancel()
         
-        with pytest.raises(ValueError, match="Appointment is already cancelled"):
+        with pytest.raises(ValueError, match="La cita ya está cancelada"):
             use_case.execute(appointment_id=1, patient_id=1)
     
     def test_should_raise_error_when_appointment_completed(self, use_case, scheduled_appointment):
         scheduled_appointment.complete()
         
-        with pytest.raises(ValueError, match="Cannot cancel a completed appointment"):
+        with pytest.raises(ValueError, match="No se puede cancelar una cita completada"):
             use_case.execute(appointment_id=1, patient_id=1)

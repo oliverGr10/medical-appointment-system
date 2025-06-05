@@ -4,7 +4,7 @@ from medical_system.usecases.doctor.list_doctors_by_specialty import ListDoctors
 from medical_system.usecases.dtos.doctor_dto import DoctorDTO
 from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.value_objects.email import Email
-from medical_system.domain.repositories.doctor_repository import DoctorRepository
+from medical_system.domain.ports.repositories.doctor_repository import DoctorRepository
 
 class TestListDoctorsBySpecialtyUseCase:
     

@@ -8,9 +8,9 @@ from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.entities.appointment import Appointment
 from medical_system.domain.value_objects.email import Email
 from medical_system.domain.value_objects.reservation_status import AppointmentStatus
-from medical_system.domain.repositories.appointment_repository import AppointmentRepository
-from medical_system.domain.repositories.patient_repository import PatientRepository
-from medical_system.domain.repositories.doctor_repository import DoctorRepository
+from medical_system.domain.ports.repositories.appointment_repository import AppointmentRepository
+from medical_system.domain.ports.repositories.patient_repository import PatientRepository
+from medical_system.domain.ports.repositories.doctor_repository import DoctorRepository
 
 class TestCreateAppointmentUseCase:
     
@@ -56,7 +56,7 @@ class TestCreateAppointmentUseCase:
             patient_id=1,
             doctor_id=1,
             date=appointment_datetime.date(),
-            time=time(10, 0)  # 10:00 AM
+            time=time(10, 0)
         )
     
     @pytest.fixture
@@ -75,7 +75,7 @@ class TestCreateAppointmentUseCase:
         )
     
     def test_should_create_appointment_when_valid_data(
-        self, use_case, appointment_repo, patient_repo, doctor_repo, 
+        self, use_case, appointment_repo,
         appointment_data, patient, doctor, appointment_datetime
     ):
         saved_appointment = Appointment(
@@ -91,19 +91,19 @@ class TestCreateAppointmentUseCase:
         result = use_case.execute(appointment_data)
         
         assert result.id == 1
-        assert result.status == AppointmentStatus.SCHEDULED
+        assert result.status == AppointmentStatus.SCHEDULED.value.lower()
         appointment_repo.save.assert_called_once()
     
     def test_should_raise_error_when_patient_not_found(self, use_case, patient_repo, appointment_data):
         patient_repo.find_by_id.return_value = None
         
-        with pytest.raises(ValueError, match="Patient not found"):
+        with pytest.raises(ValueError, match="No se encontró el paciente con ID: 1"):
             use_case.execute(appointment_data)
     
     def test_should_raise_error_when_doctor_not_found(self, use_case, doctor_repo, appointment_data):
         doctor_repo.find_by_id.return_value = None
         
-        with pytest.raises(ValueError, match="Doctor not found"):
+        with pytest.raises(ValueError, match="No se encontró el doctor con ID: 1"):
             use_case.execute(appointment_data)
     
     def test_should_raise_error_when_duplicate_appointment(
@@ -119,7 +119,7 @@ class TestCreateAppointmentUseCase:
         existing_appointment.id = 1
         appointment_repo.find_by_doctor_patient_datetime.return_value = existing_appointment
         
-        with pytest.raises(ValueError, match="This appointment already exists"):
+        with pytest.raises(ValueError, match="Ya existe una cita idéntica"):
             use_case.execute(appointment_data)
     
     def test_should_raise_error_when_patient_has_appointment_same_time(
@@ -136,7 +136,7 @@ class TestCreateAppointmentUseCase:
         
         appointment_repo.find_patient_appointments_at_same_time.return_value = [same_time_appointment]
         
-        with pytest.raises(ValueError, match="You already have an appointment at this time"):
+        with pytest.raises(ValueError, match="Ya tienes una cita programada a esta misma hora"):
             use_case.execute(appointment_data)
     
     def test_should_raise_error_when_patient_has_appointment_same_day(
@@ -153,5 +153,5 @@ class TestCreateAppointmentUseCase:
         
         appointment_repo.find_by_patient_and_date.return_value = [same_day_appointment]
         
-        with pytest.raises(ValueError, match="You can only have one appointment per day"):
+        with pytest.raises(ValueError, match="Solo puedes tener una cita por día"):
             use_case.execute(appointment_data)

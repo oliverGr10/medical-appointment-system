@@ -5,11 +5,10 @@ from medical_system.domain.entities.appointment import Appointment, AppointmentS
 from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.entities.patient import Patient
 from medical_system.domain.exceptions import UnauthorizedError
-from medical_system.domain.repositories.appointment_repository import AppointmentRepository
-from medical_system.domain.repositories.patient_repository import PatientRepository
+from medical_system.domain.ports.repositories.appointment_repository import AppointmentRepository
+from medical_system.domain.ports.repositories.patient_repository import PatientRepository
 from medical_system.domain.value_objects.email import Email
 from medical_system.usecases.appointment.list_patient_appointments import ListPatientAppointmentsUseCase
-
 
 class TestListPatientAppointmentsUseCase:
     
@@ -94,9 +93,10 @@ class TestListPatientAppointmentsUseCase:
         result = use_case.execute(patient_id=1, requesting_patient_id=1)
         
         assert len(result) == 2
-        assert result[0].id == 1
-        assert result[1].id == 2
-        appointment_repo.find_by_patient.assert_called_once_with(1)
+        result_ids = [appt['id'] for appt in result]
+        assert 1 in result_ids
+        assert 2 in result_ids
+        appointment_repo.find_by_patient.assert_called_once_with(patient_id=1)
     
     def test_should_raise_error_when_unauthorized_patient(self, use_case):
         with pytest.raises(UnauthorizedError, match="You can only view your own appointments"):
@@ -114,7 +114,7 @@ class TestListPatientAppointmentsUseCase:
         result = use_case.execute(patient_id=1, requesting_patient_id=1)
         
         assert len(result) == 0
-        appointment_repo.find_by_patient.assert_called_once_with(1)
+        appointment_repo.find_by_patient.assert_called_once_with(patient_id=1)
     
     def test_should_return_appointments_with_different_statuses(
         self, use_case, appointment_repo, scheduled_appointment,
@@ -129,6 +129,7 @@ class TestListPatientAppointmentsUseCase:
         result = use_case.execute(patient_id=1, requesting_patient_id=1)
         
         assert len(result) == 3
-        assert result[0].status == "scheduled"
-        assert result[1].status == "cancelled"
-        assert result[2].status == "completed"
+        statuses = [appt['status'] for appt in result]
+        assert "scheduled" in statuses
+        assert "cancelled" in statuses
+        assert "completed" in statuses

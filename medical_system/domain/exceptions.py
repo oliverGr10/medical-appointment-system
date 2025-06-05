@@ -1,36 +1,29 @@
 
 class DomainException(Exception):
-    def __init__(self, message: str = "A domain error occurred", code: str = None):
+    def __init__(self, message: str = "Ocurrió un error en el dominio", code: str = None):
         self.message = message
-        self.code = code or "domain_error"
+        self.code = code or "error_dominio"
         super().__init__(self.message)
 
+class BadRequestError(DomainException):
+    def __init__(self, message: str = "Solicitud incorrecta", code: str = None):
+        super().__init__(message, code or "solicitud_incorrecta")
+
 class UnauthorizedError(DomainException):
-    def __init__(self, message: str = "Unauthorized access", code: str = None):
-        super().__init__(message or "You don't have permission to perform this action", code or "unauthorized")
+    def __init__(self, message: str = "Acceso no autorizado", code: str = None):
+        super().__init__(message or "No tienes permiso para realizar esta acción", code or "no_autorizado")
 
 class ValidationError(DomainException):
-    def __init__(self, message: str = "Invalid input data", code: str = None, errors: dict = None):
+    def __init__(self, message: str = "Datos de entrada no válidos", code: str = None, errors: dict = None):
         self.errors = errors or {}
-        super().__init__(message, code or "validation_error")
+        super().__init__(message, code or "validacion_fallida")
 
 class ResourceNotFoundError(DomainException):
-    def __init__(self, message: str = "The requested resource was not found", code: str = None):
-        super().__init__(message, code or "not_found")
+    def __init__(self, message: str = "El recurso solicitado no fue encontrado", code: str = None):
+        super().__init__(message, code or "recurso_no_encontrado")
+
+NotFoundError = ResourceNotFoundError
 
 class BusinessRuleViolationError(DomainException):
-    def __init__(self, message: str = "Business rule violation", code: str = None):
-        super().__init__(message, code or "business_rule_violation")
-
-class ConflictError(DomainException):
-    def __init__(self, message: str = "Resource conflict", code: str = None):
-        super().__init__(message, code or "conflict")
-
-class ServiceUnavailableError(DomainException):
-    def __init__(self, message: str = "Service unavailable", code: str = None):
-        super().__init__(message, code or "service_unavailable")
-
-class RateLimitExceededError(DomainException):
-    def __init__(self, message: str = "Rate limit exceeded", code: str = None, retry_after: int = None):
-        self.retry_after = retry_after
-        super().__init__(message, code or "rate_limit_exceeded")
+    def __init__(self, message: str = "Violación de regla de negocio", code: str = None):
+        super().__init__(message, code or "violacion_regla_negocio")

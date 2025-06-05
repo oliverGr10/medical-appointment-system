@@ -1,6 +1,6 @@
 from unittest.mock import create_autospec
 import pytest
-from medical_system.domain.repositories.patient_repository import PatientRepository
+from medical_system.domain.ports.repositories.patient_repository import PatientRepository
 from medical_system.usecases.dtos.patient_dto import CreatePatientDTO, PatientDTO
 from medical_system.usecases.patient.create_patient import CreatePatientUseCase
 
@@ -50,10 +50,12 @@ class TestCreatePatientUseCase:
         patient_repo.find_by_email.assert_called_once_with(patient_data["email"])
         patient_repo.save.assert_not_called()
     
-    def test_should_raise_error_when_invalid_email_format(self, use_case, patient_data):
+    def test_should_raise_error_when_invalid_email_format(self, use_case, patient_data, patient_repo):
+        patient_repo.find_by_email.return_value = None
         with pytest.raises(ValueError, match="Invalid email format"):
             use_case.execute(CreatePatientDTO(
                 name=patient_data["name"],
                 email="invalid-email",
                 birth_date=patient_data["birth_date"]
             ))
+        patient_repo.find_by_email.assert_called_once_with("invalid-email")

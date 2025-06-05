@@ -2,7 +2,6 @@ from typing import List
 from medical_system.usecases.dtos.doctor_dto import DoctorDTO
 from medical_system.domain.ports.repositories.doctor_repository import DoctorRepository
 
-
 class ListDoctorsBySpecialtyUseCase:
     def __init__(self, doctor_repository: DoctorRepository):
         self.doctor_repository = doctor_repository

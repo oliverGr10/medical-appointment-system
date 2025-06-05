@@ -1,11 +1,21 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from typing import List, Optional
 from datetime import date
 from medical_system.usecases.appointment.list_all_appointments import ListAllAppointmentsUseCase
 from medical_system.usecases.dtos.appointment_dto import AppointmentDTO
 from medical_system.infrastructure.persistence.in_memory.in_memory_appointment_repository import InMemoryAppointmentRepository
+from medical_system.interfaces.api.middleware.auth_middleware import get_admin_user
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/admin",
+    tags=["Administración"],
+    dependencies=[Depends(get_admin_user)],
+    responses={
+        401: {"description": "No autorizado - Token inválido o expirado"},
+        403: {"description": "Operación no permitida - Se requieren permisos de administrador"}
+    }
+)
+
 appointment_repo = InMemoryAppointmentRepository()
 
 @router.get("/appointments", response_model=List[AppointmentDTO])

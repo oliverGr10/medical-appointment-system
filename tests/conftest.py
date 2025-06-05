@@ -1,10 +1,31 @@
 from datetime import date, time, timedelta
 import pytest
+from typing import Optional
 from medical_system.domain.entities.appointment import Appointment
 from medical_system.domain.entities.doctor import Doctor
 from medical_system.domain.entities.patient import Patient
 from medical_system.domain.value_objects.email import Email
 from medical_system.domain.value_objects.reservation_status import AppointmentStatus
+
+
+@pytest.fixture
+def patient_factory():
+
+    def _patient_factory(
+        id: Optional[int] = None,
+        name: str = "Paciente de Prueba",
+        email: str = "paciente@example.com",
+        birth_date: date = date(1990, 1, 1)
+    ) -> Patient:
+        patient = Patient(
+            name=name,
+            email=Email(email),
+            birth_date=birth_date
+        )
+        if id is not None:
+            patient.id = id
+        return patient
+    return _patient_factory
 
 @pytest.fixture
 def sample_patient():
@@ -18,7 +39,6 @@ def sample_patient():
 
 @pytest.fixture
 def another_patient():
-    """Crea otro paciente de ejemplo para pruebas."""
     return Patient(
         name="María López",
         email=Email("maria@example.com"),
@@ -27,7 +47,6 @@ def another_patient():
 
 @pytest.fixture
 def sample_doctor():
-    """Crea un doctor de ejemplo para pruebas."""
     return Doctor(
         name="Dr. Carlos García",
         email=Email("dr.garcia@example.com"),
@@ -37,7 +56,6 @@ def sample_doctor():
 
 @pytest.fixture
 def another_doctor():
-    """Crea otro doctor de ejemplo para pruebas."""
     return Doctor(
         name="Dra. Ana Martínez",
         email=Email("dra.martinez@example.com"),
@@ -46,10 +64,9 @@ def another_doctor():
 
 @pytest.fixture
 def sample_appointment(sample_patient, sample_doctor):
-    """Crea una cita de ejemplo para pruebas."""
     return Appointment(
-        date=date.today() + timedelta(days=1),  # Mañana
-        time=time(10, 0),  # 10:00 AM
+        date=date.today() + timedelta(days=1),
+        time=time(10, 0),
         status=AppointmentStatus.SCHEDULED,
         patient=sample_patient,
         doctor=sample_doctor
@@ -58,9 +75,8 @@ def sample_appointment(sample_patient, sample_doctor):
 
 @pytest.fixture
 def completed_appointment(sample_patient, sample_doctor):
-    """Crea una cita completada para pruebas."""
     return Appointment(
-        date=date.today() - timedelta(days=1),  # Ayer
+        date=date.today() - timedelta(days=1),
         time=time(14, 30),
         status=AppointmentStatus.COMPLETED,
         patient=sample_patient,
@@ -70,7 +86,6 @@ def completed_appointment(sample_patient, sample_doctor):
 
 @pytest.fixture
 def cancelled_appointment(sample_patient, sample_doctor):
-    """Crea una cita cancelada para pruebas."""
     return Appointment(
         date=date.today() + timedelta(days=2),
         time=time(11, 0),
@@ -81,25 +96,21 @@ def cancelled_appointment(sample_patient, sample_doctor):
 
 @pytest.fixture
 def tomorrow():
-    """Retorna la fecha de mañana."""
     return date.today() + timedelta(days=1)
 
 
 @pytest.fixture
 def yesterday():
-    """Retorna la fecha de ayer."""
     return date.today() - timedelta(days=1)
 
 
 @pytest.fixture
 def next_week():
-    """Retorna la fecha de la próxima semana."""
     return date.today() + timedelta(weeks=1)
 
 
 @pytest.fixture
 def next_month():
-    """Retorna la fecha del próximo mes."""
     today = date.today()
     if today.month == 12:
         return today.replace(year=today.year + 1, month=1)

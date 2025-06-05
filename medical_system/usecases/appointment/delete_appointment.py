@@ -7,6 +7,7 @@ from medical_system.domain.exceptions import (
     ResourceNotFoundError,
     BusinessRuleViolationError
 )
+from medical_system.domain.entities.appointment import AppointmentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,6 @@ class DeleteAppointmentUseCase:
                 f"Fecha: {appointment.date} {appointment.time})"
             )
             
-            # Eliminar la cita
             self.appointment_repository.delete(appointment_id)
             
             logger.info(f"Cita {appointment_id} eliminada exitosamente")
@@ -69,18 +69,24 @@ class DeleteAppointmentUseCase:
         is_admin: bool
     ) -> None:
 
-        is_patient = hasattr(appointment, 'patient') and appointment.patient.id == requesting_user_id
-        is_doctor = hasattr(appointment, 'doctor') and appointment.doctor.id == requesting_user_id
+        if is_admin:
+            return
+            
+        is_doctor = (
+            hasattr(appointment.doctor, 'id') and 
+            appointment.doctor.id == requesting_user_id
+        )
+        is_patient = (
+            hasattr(appointment.patient, 'id') and 
+            appointment.patient.id == requesting_user_id
+        )
         
-        if not (is_admin or is_doctor or is_patient):
-            logger.warning(
-                f"Intento no autorizado de eliminar cita {appointment.id} "
-                f"por usuario {requesting_user_id}"
-            )
+        if not (is_doctor or is_patient):
             raise UnauthorizedError(
                 "No tiene permisos para eliminar esta cita"
             )
-        if is_patient and not is_admin:
+            
+        if is_patient:
             self._validate_patient_can_delete(appointment)
     
     def _validate_patient_can_delete(self, appointment) -> None:
@@ -97,9 +103,5 @@ class DeleteAppointmentUseCase:
             )
     
     def _validate_appointment_can_be_deleted(self, appointment) -> None:
-
-        if appointment.status == AppointmentStatus.COMPLETED:
-            raise BusinessRuleViolationError(
-                "No se pueden eliminar citas ya completadas"
-            )
+        pass
             

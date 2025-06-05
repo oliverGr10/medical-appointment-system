@@ -20,24 +20,24 @@ class Appointment(BaseEntity):
     def _validate(self):
         appointment_datetime = datetime.combine(self.date, self.time)
         if appointment_datetime <= datetime.now():
-            raise ValueError("Appointment must be in the future")
+            raise ValueError("La cita debe ser en el futuro")
         
         if not (time(8, 0) <= self.time < time(20, 0)):
-            raise ValueError("Appointment must be between 8:00 and 20:00")
+            raise ValueError("La cita debe estar entre las 8:00 y las 20:00 horas")
         
         if self.time.minute % 30 != 0:
-            raise ValueError("Appointment time must be at 30-minute intervals")
+            raise ValueError("La hora de la cita debe ser en intervalos de 30 minutos")
 
     def cancel(self):
         if self.status == AppointmentStatus.CANCELLED:
-            raise ValueError("Appointment is already cancelled")
+            raise ValueError("La cita ya está cancelada")
         if self.status == AppointmentStatus.COMPLETED:
-            raise ValueError("Cannot cancel a completed appointment")
+            raise ValueError("No se puede cancelar una cita completada")
         self.status = AppointmentStatus.CANCELLED
 
     def complete(self):
         if self.status == AppointmentStatus.CANCELLED:
-            raise ValueError("Cannot complete a cancelled appointment")
+            raise ValueError("No se puede completar una cita cancelada")
         if self.status == AppointmentStatus.COMPLETED:
-            raise ValueError("Appointment is already completed")
+            raise ValueError("La cita ya está completada")
         self.status = AppointmentStatus.COMPLETED
